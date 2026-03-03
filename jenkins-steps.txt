@@ -1,0 +1,172 @@
+✅ STEP 1 — Subir Jenkins com Docker (Windows)
+
+Abra o PowerShell:
+docker volume create jenkins_b1_volume
+
+Agora rode:
+docker run -d --name jenkins-b1-container -p 8080:8080 -p 50000:50000 -v jenkins-b1-container:/var/jenkins_home -v //var/run/docker.sock:/var/run/docker.sock jenkins/jenkins:lts
+
+⚠️ Importante:
+docker run -d → roda o container em background.
+--name jenkins → dá o nome jenkins ao container.
+-p 8080:8080 → mapeia a porta 8080 do container para a sua máquina. Essa é a porta web do Jenkins.
+-p 50000:50000 → porta para comunicação entre o master do Jenkins e agentes/slaves, se você usar.
+-v jenkins-demo-container:/var/jenkins-demo-container → monta o volume criado no passo 1 dentro do container.
+
+
+Depois acesse:
+http://localhost:8080
+
+Pegue a senha inicial:
+docker exec jenkins-b1-container cat /var/jenkins_home/secrets/initialAdminPassword (exec nome-do-container, NÃO nome-do-volume)
+
+Instale os plugins sugeridos.
+
+✅ STEP 2 — Criar projeto Node simples
+
+Crie uma pasta:
+mkdir jenkins-demo
+cd jenkins-demo
+
+Crie um package.json simples:
+
+{
+  "name": "jenkins-demo",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "echo \"Running tests...\" && exit 0"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+
+Crie index.js:
+const express = require('express');
+const app = express();
+
+app.get('/', (req, res) => {
+  res.send('Hello Jenkins CI/CD!');
+});
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+✅ STEP 3 — Criar Dockerfile
+
+Crie um arquivo Dockerfile:
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["node", "index.js"]
+
+Teste localmente:
+
+docker build -t jenkins-demo .
+docker run -p 3000:3000 jenkins-demo
+
+Acesse:
+http://localhost:3000
+
+Se funcionar, perfeito.
+
+✅ STEP 4 — Criar Jenkinsfile
+
+Agora crie um arquivo chamado Jenkinsfile:
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing dependencies...'
+                sh 'npm install'
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                echo 'Running tests...'
+                sh 'npm test'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image...'
+                sh 'docker build -t jenkins-demo .'
+            }
+        }
+
+        stage('Simulated Deploy') {
+            steps {
+                echo 'Simulating deploy...'
+                sh 'docker run -d -p 4000:3000 jenkins-demo'
+            }
+        }
+    }
+}
+⚠️ IMPORTANTE (Windows issue)
+
+O Jenkins container precisa ter acesso ao Docker.
+
+Se o build falhar dizendo que docker não existe dentro do container, você vai precisar rodar Jenkins assim:
+
+docker run -d ^
+  --name jenkins ^
+  -p 8080:8080 ^
+  -p 50000:50000 ^
+  -v jenkins_home:/var/jenkins_home ^
+  --privileged ^
+  jenkins/jenkins:lts
+
+E instalar Docker CLI dentro do container.
+
+Se isso acontecer, me avisa que te passo o ajuste correto para Windows.
+
+✅ STEP 5 — Criar Pipeline no Jenkins
+
+New Item
+
+Pipeline
+
+Marque:
+✔ Pipeline script from SCM (se usar Git)
+ou
+✔ Pipeline script direto
+
+Cole o conteúdo do Jenkinsfile.
+
+Clique Build Now.
+
+🎉 Resultado Final
+
+Você terá:
+
+✔ Jenkins configurado
+✔ Pipeline criada por você
+✔ Stages reais
+✔ Build Docker automático
+✔ Deploy simulado
+
+🧠 O que você pode dizer agora com segurança:
+
+Designed and configured a CI/CD pipeline using Jenkins for automated dependency installation, test execution, Docker image build, and containerized deployment simulation.
+
+Isso agora é verdade.
+
+
+
+>>>> pegar a senha admin dentro do container caso necessário
+docker exec -it jenkins-b1-container cat /var/jenkins_home/secrets/initialAdminPassword
