@@ -1,36 +1,30 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:20'
-        }
-    }
+    agent any  // usa o container Jenkins
 
     stages {
-        stage('Install Dependencies') {
+        stage('Checkout') {
             steps {
-                echo 'Installing dependencies...'
-                sh 'npm install'
+                checkout scm
             }
         }
 
-        stage('Run Tests') {
+        stage('Build & Test') {
+            agent { docker { image 'node:20' } }  // container Node só para npm
             steps {
-                echo 'Running tests...'
+                sh 'npm install'
                 sh 'npm test'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo 'Building Docker image...'
-                sh 'docker build -t jenkins-demo .'
+                sh 'docker build -t jenkins-demo .'  // RODA NO CONTAINER JENKINS, TEM CLI!
             }
         }
 
         stage('Simulated Deploy') {
             steps {
-                echo 'Simulating deploy...'
-                sh 'docker run -d -p 4000:3000 jenkins-demo'
+                echo 'Deploy skipped'
             }
         }
     }
